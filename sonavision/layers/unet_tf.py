@@ -1,6 +1,7 @@
 import tensorflow as tf
 
-def CBR_downsample(filters=64, kernel_size=3, apply_batchnorm=True, leakyReLU=False):
+
+def CBRDownsample(filters=64, kernel_size=3, apply_batchnorm=True, leakyReLU=False):
     """Defines a downsampling Conv->Batch->ReLU Block.
 
     It is used iteratively when building Generator/Discriminator.
@@ -41,7 +42,7 @@ def CBR_downsample(filters=64, kernel_size=3, apply_batchnorm=True, leakyReLU=Fa
     return result
 
 
-def CBR_upsample(filters=64, kernel_size=3, apply_dropout=False, leakyReLU=False):
+def CBRUpsample(filters=64, kernel_size=3, apply_dropout=False, leakyReLU=False):
     """Defines an upsamlping Conv->Batch->ReLU Block.
 
     It is used iteratively when building Generator / Discriminator.
