@@ -5,7 +5,22 @@ from layers.unet_tf import CBRDownsample, CBRUpsample
 def PIX2PIX_GENERATOR_SONAR_CAMERA(
     input_shape=[256, 512, 3],
     output_shape=[256, 512, 3],
+    base_filters=64,
 ):
+    """Generator for the pix2pix model.
+
+    Args:
+        input_shape (list, optional): shape of the input vector. Defaults to [256, 512, 3].
+        output_shape (list, optional): shape of the output vector. Defaults to [256, 512, 3].
+        base_filters (int, optional): Number of base filters. Defaults to 64.
+
+    Raises:
+        ValueError: If the input shape is not power of 2.
+
+    Returns:
+        _type_: tf.keras.Model
+    """
+
     sonar_input = tf.keras.layers.Input(input_shape)
     camera_input = tf.keras.layers.Input(input_shape)
 
@@ -16,20 +31,90 @@ def PIX2PIX_GENERATOR_SONAR_CAMERA(
         filters=16, kernel_size=3, strides=1, padding="same"
     )(camera_input)
 
-    
-    max_dim = max(input_shape[0], input_shape[1])
-    min_dim = min(input_shape[0], input_shape[1])
-    max_dim_index = input_shape.index(max_dim)
-    min_dim_index = input_shape.index(min_dim)
+    concat = tf.keras.layers.Concatenate()([sonar_input_conv, camera_input_conv])
 
+    min_dim = min(input_shape[0], input_shape[1])
     temp_min_dim = min_dim
 
-    # TODO: create downsample stack of layers for Yx1 resolution
+    # check which power of 2 is the min_dim
+    while temp_min_dim > 1:
+        temp_min_dim = temp_min_dim / 2
 
-    # TODO: create upsample stack of layers for coming back to output resolution
+    if temp_min_dim != 1:
+        raise ValueError("The min dimension of the input shape must be a power of 2")
+
+    # create downsample stack of layers for Yx1 resolution
+    downsample_stack = []
+    for i in range(0, temp_min_dim):
+        downsample_stack.append(
+            CBRDownsample(filters=base_filters * (2 ** i), kernel_size=4)
+        )
+
+    # create upsample stack of layers for coming back to output resolution
+    upsample_stack = []
+    for i in range(0, temp_min_dim):
+        upsample_stack.append(
+            CBRUpsample(filters=base_filters * (2 ** i), kernel_size=4)
+        )
+
+    # create output layer
+    last = tf.keras.layers.Conv2D(
+        filters=input_shape[2],
+        kernel_size=4,
+        strides=2,
+        padding="same",
+        activation="tanh",
+    )
+
+    # skip connections
+    skip_connections = []
+    for d in downsample_stack:
+        concat = d(concat)
+        skip_connections.append(concat)
+
+    skip_connections = reversed(skip_connections[:-1])
+
+    for up, skip in zip(upsample_stack, skip_connections):
+        concat = up(concat)
+        concat = tf.keras.layers.Concatenate()([concat, skip])
+
+    output = last(concat)
+
+    return tf.keras.Model(inputs=[sonar_input, camera_input], outputs=output)
 
 
 def PIX2PIX_DISCRIMINATOR_SONAR_CAMERA(
     input_shape=[256, 512, 3],
+    output_shape=[256, 512, 3],
+    base_filters=256,
 ):
-    pass
+    # define PatchGAN discriminator
+    sonar_input = tf.keras.layers.Input(input_shape)
+    camera_input = tf.keras.layers.Input(input_shape)
+    reference_input = tf.keras.layers.Input(input_shape)
+
+    sonar_input_conv = tf.keras.layers.Conv2D(
+        filters=256, kernel_size=3, strides=1, padding="same"
+    )(sonar_input)
+    camera_input_conv = tf.keras.layers.Conv2D(
+        filters=256, kernel_size=3, strides=1, padding="same"
+    )(camera_input)
+
+    # TODO: how to concatenate the inputs?
+    concat = tf.keras.layers.Concatenate()(
+        [sonar_input_conv, camera_input_conv, reference_input]
+    )
+
+    # TODO: how to go down till 70x140 what is equivalent?
+    d1 = CBRDownsample(
+        filters=base_filters, kernel_size=4, apply_batchnorm=False, leakyReLU=True
+    )(concat)
+    d2 = CBRDownsample(filters=base_filters * 2, kernel_size=4, leakyReLU=True)(d1)
+    d3 = CBRDownsample(filters=base_filters * 4, kernel_size=4, leakyReLU=True)(d2)
+    d4 = CBRDownsample(filters=base_filters * 8, kernel_size=4, leakyReLU=True)(d3)
+    d5 = CBRDownsample(filters=1, kernel_size=4, leakyReLU=True)(d4)
+    out = tf.keras.activations.sigmoid(d5)
+
+    return tf.keras.Model(inputs=[sonar_input, camera_input, reference_input], outputs=out)
+
+    
