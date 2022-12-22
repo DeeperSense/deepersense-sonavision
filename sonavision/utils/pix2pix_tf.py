@@ -1,8 +1,10 @@
 import tensorflow as tf
 from utils.common import images_resize, random_crop, normalize_inputs
+from matplotlib import pyplot as plt
 
 
-def load_triplet(image_file, image_format: str = "png"):
+
+def decode_images(image_file, num_images: int, image_format: str = "png"):
     # Read and decode an image file to a uint8 tensor
     image = tf.io.read_file(image_file)
 
@@ -14,17 +16,14 @@ def load_triplet(image_file, image_format: str = "png"):
     # Split each image tensor into three tensors:
     # reference image, dark image, and sonar image
     w = tf.shape(image)[1]
-    w = w // 3
-    reference_image = image[:, :w, :]
-    night_image = image[:, w : 2 * w, :]
-    sonar_image = image[:, 2 * w :, :]
+    w = w // num_images
 
-    # Convert both images to float32 tensors
-    reference_image = tf.cast(reference_image, tf.float32)
-    night_image = tf.cast(night_image, tf.float32)
-    sonar_image = tf.cast(sonar_image, tf.float32)
+    images = []
 
-    return reference_image, night_image, sonar_image
+    for i in range(num_images):
+        images.append(tf.cast(image[:, i * w : (i + 1) * w, :], tf.float32))
+
+    return images
 
 
 def random_jitter(images: list, height: int = 256, width: int = 256):
@@ -44,14 +43,15 @@ def random_jitter(images: list, height: int = 256, width: int = 256):
     return out
 
 
-def load_image_train(
+def load_image(
     image_file,
+    num_images_per_image: int = 3,
     crop: bool = False,
     normalize: bool = False,
     height: int = 256,
     width: int = 512,
 ):
-    img = load_triplet(image_file)
+    img = decode_images(image_file, num_images_per_image)
     if crop:
         img = random_crop(img, height, width)
     if normalize:
@@ -85,3 +85,19 @@ def generate_images(
     # plt.savefig(save_path)
     # plt.show()
     pass
+
+
+def generate_images(model, test_input, tar):
+  prediction = model(test_input, training=True)
+  plt.figure(figsize=(15, 15))
+
+  display_list = [test_input[0], tar[0], prediction[0]]
+  title = ['Input Image', 'Ground Truth', 'Predicted Image']
+
+  for i in range(3):
+    plt.subplot(1, 3, i+1)
+    plt.title(title[i])
+    # Getting the pixel values in the [0, 1] range to plot.
+    plt.imshow(display_list[i] * 0.5 + 0.5)
+    plt.axis('off')
+  plt.show()

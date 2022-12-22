@@ -25,11 +25,15 @@ def images_resize(images: list, height: int, width: int) -> list:
 
 def random_crop(images: list, height: int, width: int) -> list:
     # stacked_image = tf.stack(images, axis=0)
-    cropped_image = tf.image.random_crop(images, size=[3, height, width, 3])
+    cropped_images = []
+    for i in images:
+        cropped_images.append(tf.image.random_crop(i, size=[3, height, width, 3]))
 
-    return cropped_image
+    return cropped_images
 
 
 def normalize_inputs(x):
-    x = (x / 127.5) - 1
-    return x
+    normalized = []
+    for img in x:
+        normalized.append((img / 127.5) - 1)
+    return normalized

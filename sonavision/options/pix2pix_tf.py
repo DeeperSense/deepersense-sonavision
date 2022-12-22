@@ -3,7 +3,7 @@ import time
 import pathlib
 
 
-class Options:
+class Pix2PixOptions:
     def __init__(self) -> None:
         self.parser = argparse.ArgumentParser()
         self.time = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime())
@@ -18,7 +18,7 @@ class Options:
         )
         self.parser.add_argument(
             "--dataset_dir",
-            required=False,
+            required=True,
             default="datasets/dfki-divers",
             help="path to dataset",
         )
@@ -35,7 +35,7 @@ class Options:
             help="test subfolder in dataset",
         )
         self.parser.add_argument(
-            "--batch_size", type=int, default=1, help="train batch size"
+            "--batch_size", type=int, default=8, help="train batch size"
         )
         self.parser.add_argument(
             "--test_batch_size", type=int, default=5, help="test batch size"
@@ -43,18 +43,25 @@ class Options:
         # self.parser.add_argument('--ngf', type=int, default=64)
         # self.parser.add_argument('--ndf', type=int, default=64)
         self.parser.add_argument(
-            "--input_size",
+            "--input_shape",
             type=int,
             nargs=2,
-            default=[0, 0],
-            help="input size, format: height width",
+            default=[256, 512],
+            help="input shape, format: height width",
         )
         self.parser.add_argument(
-            "--crop_size",
+            "--output_shape",
+            type=int,
+            nargs=2,
+            default=[256, 512],
+            help="output shape, format: height width",
+        )
+        self.parser.add_argument(
+            "--crop_shape",
             type=int,
             nargs=2,
             default=[0, 0],
-            help="crop size (0 0 is false) format: height width",
+            help="crop shape (0 0 is false) format: height width",
         )
         self.parser.add_argument(
             "--resize",
@@ -64,7 +71,10 @@ class Options:
             help="resize scale (0 is false) format: height width",
         )
         self.parser.add_argument(
-            "--fliplr", type=bool, default=True, help="random fliplr True or False"
+            "--fliplr",
+            action="store_true",
+            default=True,
+            help="random fliplr True or False",
         )
 
         self.parser.add_argument(
@@ -77,7 +87,13 @@ class Options:
             "--lrG", type=float, default=0.0002, help="learning rate, default=0.0002"
         )
         self.parser.add_argument(
-            "--L1_lambda", type=float, default=100, help="lambda for L1 loss"
+            "--ngf", type=int, default=64, help="base filters for generator"
+        )
+        self.parser.add_argument(
+            "--ndf", type=int, default=64, help="base filters for discriminator"
+        )
+        self.parser.add_argument(
+            "--lambda_l1", type=float, default=100, help="lambda for L1 loss"
         )
         self.parser.add_argument(
             "--beta1", type=float, default=0.5, help="beta1 for Adam optimizer"
@@ -88,8 +104,12 @@ class Options:
         self.parser.add_argument(
             "--results_dir", default="results", help="results save path"
         )
+
         self.parser.add_argument(
-            "--checkpoints_dir",
+            "--logs_dir", default="log", help="logs dir"
+        )
+        self.parser.add_argument(
+            "--checkpoint_dir",
             default="checkpoints",
             help="checkpoints save path",
         )
@@ -100,7 +120,44 @@ class Options:
             help="models save path",
         )
 
+        self.parser.add_argument(
+            "--image_format",
+            default="png",
+            help="image format for input",
+        )
         self.initialized = True
+
+    def parse_inline(self, args):
+        if not self.initialized:
+            self.initialize()
+        self.opt = self.parser.parse_args(args)
+        args = vars(self.opt)
+        print("------------ Options -------------")
+        print("time: %s" % self.time)
+        for k, v in sorted(args.items()):
+            print("%s: %s" % (str(k), str(v)))
+        print("-------------- End ----------------")
+
+        # create required directories
+        results_dir = pathlib.Path(self.time) / self.opt.results_dir
+        # results_dir.mkdir(parents=True, exist_ok=True)/
+
+        checkpoints_dir = pathlib.Path(self.time) / self.opt.checkpoint_dir
+        # checkpoints_dir.mkdir(parents=True, exist_ok=True)
+
+        model_save_dir = pathlib.Path(self.time) / self.opt.model_save_dir
+        # model_save_dir.mkdir(parents=True, exist_ok=True)
+
+        logs_dir = pathlib.Path(self.time) / self.opt.logs_dir
+        # logs_dir.mkdir(parents=True, exist_ok=True)
+
+        # replace values for resuls, checkpoints, model and logs in self.opt
+        self.opt.results_dir = pathlib.Path(results_dir)
+        self.opt.checkpoints_dir = pathlib.Path(checkpoints_dir)
+        self.opt.model_save_dir = pathlib.Path(model_save_dir)
+        self.opt.logs_dir = pathlib.Path(logs_dir)
+
+        return self.opt
 
     def parse(self):
         if not self.initialized:
@@ -113,7 +170,32 @@ class Options:
             print("%s: %s" % (str(k), str(v)))
         print("-------------- End ----------------")
 
+        # create required directories
+        results_dir = pathlib.Path(self.time) / self.opt.results_dir
+        results_dir.mkdir(parents=True, exist_ok=True)
+
+        checkpoints_dir = pathlib.Path(self.time) / self.opt.checkpoint_dir
+        checkpoints_dir.mkdir(parents=True, exist_ok=True)
+
+        model_save_dir = pathlib.Path(self.time) / self.opt.model_save_dir
+        model_save_dir.mkdir(parents=True, exist_ok=True)
+
+        logs_dir = pathlib.Path(self.time) / self.opt.logs_dir
+        logs_dir.mkdir(parents=True, exist_ok=True)
+
+        # replace values for resuls, checkpoints, model and logs in self.opt
+        self.opt.results_dir = pathlib.Path(results_dir)
+        self.opt.checkpoints_dir = pathlib.Path(checkpoints_dir)
+        self.opt.model_save_dir = pathlib.Path(model_save_dir)
+        self.opt.logs_dir = pathlib.Path(logs_dir)
+
         # save to the disk
-        options_save_dir = pathlib.Path(self.opt.checkpoints_dir) / self.time
-        options_save_dir.mkdir(parents=True, exist_ok=True)
+        file_name = pathlib.Path(self.time) / "opt.txt"
+        with open(file_name, "wt") as opt_file:
+            opt_file.write("------------ Options -------------\n")
+            opt_file.write("time: %s \n" % self.time)
+            for k, v in sorted(args.items()):
+                opt_file.write("%s: %s \n" % (str(k), str(v)))
+            opt_file.write("-------------- End ----------------\n")
+
         return self.opt
