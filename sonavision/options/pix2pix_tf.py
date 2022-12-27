@@ -87,10 +87,10 @@ class Pix2PixOptions:
             "--lrG", type=float, default=0.0002, help="learning rate, default=0.0002"
         )
         self.parser.add_argument(
-            "--ngf", type=int, default=64, help="base filters for generator"
+            "--ngf", type=int, default=32, help="base filters for generator"
         )
         self.parser.add_argument(
-            "--ndf", type=int, default=64, help="base filters for discriminator"
+            "--ndf", type=int, default=32, help="base filters for discriminator"
         )
         self.parser.add_argument(
             "--lambda_l1", type=float, default=100, help="lambda for L1 loss"
@@ -109,7 +109,7 @@ class Pix2PixOptions:
             "--logs_dir", default="log", help="logs dir"
         )
         self.parser.add_argument(
-            "--checkpoint_dir",
+            "--checkpoints_dir",
             default="checkpoints",
             help="checkpoints save path",
         )
@@ -140,22 +140,31 @@ class Pix2PixOptions:
 
         # create required directories
         results_dir = pathlib.Path(self.time) / self.opt.results_dir
-        # results_dir.mkdir(parents=True, exist_ok=True)/
+        results_dir.mkdir(parents=True, exist_ok=True)
 
-        checkpoints_dir = pathlib.Path(self.time) / self.opt.checkpoint_dir
-        # checkpoints_dir.mkdir(parents=True, exist_ok=True)
+        checkpoints_dir = pathlib.Path(self.time) / self.opt.checkpoints_dir
+        checkpoints_dir.mkdir(parents=True, exist_ok=True)
 
         model_save_dir = pathlib.Path(self.time) / self.opt.model_save_dir
-        # model_save_dir.mkdir(parents=True, exist_ok=True)
+        model_save_dir.mkdir(parents=True, exist_ok=True)
 
         logs_dir = pathlib.Path(self.time) / self.opt.logs_dir
-        # logs_dir.mkdir(parents=True, exist_ok=True)
+        logs_dir.mkdir(parents=True, exist_ok=True)
 
         # replace values for resuls, checkpoints, model and logs in self.opt
-        self.opt.results_dir = pathlib.Path(results_dir)
-        self.opt.checkpoints_dir = pathlib.Path(checkpoints_dir)
-        self.opt.model_save_dir = pathlib.Path(model_save_dir)
-        self.opt.logs_dir = pathlib.Path(logs_dir)
+        self.opt.results_dir = results_dir
+        self.opt.checkpoints_dir = checkpoints_dir
+        self.opt.model_save_dir = model_save_dir
+        self.opt.logs_dir = logs_dir
+
+        # save to the disk
+        file_name = pathlib.Path(self.time) / "opt.txt"
+        with open(file_name, "wt") as opt_file:
+            opt_file.write("------------ Options -------------\n")
+            opt_file.write("time: %s \n" % self.time)
+            for k, v in sorted(args.items()):
+                opt_file.write("%s: %s \n" % (str(k), str(v)))
+            opt_file.write("-------------- End ----------------\n")
 
         return self.opt
 
@@ -174,7 +183,7 @@ class Pix2PixOptions:
         results_dir = pathlib.Path(self.time) / self.opt.results_dir
         results_dir.mkdir(parents=True, exist_ok=True)
 
-        checkpoints_dir = pathlib.Path(self.time) / self.opt.checkpoint_dir
+        checkpoints_dir = pathlib.Path(self.time) / self.opt.checkpoints_dir
         checkpoints_dir.mkdir(parents=True, exist_ok=True)
 
         model_save_dir = pathlib.Path(self.time) / self.opt.model_save_dir
@@ -184,10 +193,10 @@ class Pix2PixOptions:
         logs_dir.mkdir(parents=True, exist_ok=True)
 
         # replace values for resuls, checkpoints, model and logs in self.opt
-        self.opt.results_dir = pathlib.Path(results_dir)
-        self.opt.checkpoints_dir = pathlib.Path(checkpoints_dir)
-        self.opt.model_save_dir = pathlib.Path(model_save_dir)
-        self.opt.logs_dir = pathlib.Path(logs_dir)
+        self.opt.results_dir = results_dir
+        self.opt.checkpoints_dir = checkpoints_dir
+        self.opt.model_save_dir = model_save_dir
+        self.opt.logs_dir = logs_dir
 
         # save to the disk
         file_name = pathlib.Path(self.time) / "opt.txt"

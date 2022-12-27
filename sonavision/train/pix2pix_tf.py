@@ -67,14 +67,15 @@ def fit(train_dataset, steps, generator,discriminator,generator_loss_fn,discrimi
     for step, (input, target) in train_dataset.repeat().take(steps).enumerate():
         tick = time.time()
         if step % 1000 == 0:
+            tick = time.time()
             print(f"Step: {step//1000}k")
         train_step(input, target, step, generator,discriminator,generator_loss_fn,discriminator_loss_fn,generator_optimizer,discriminator_optimizer, lambda_l1, loss_object,summary_writer,)
         # training step
-        if (step + 1) % 10 == 0:
+        if (step + 1) % 1 == 0:
             print(".", end="", flush=True)
 
         # Save (checkpoint) the model every 5k steps
-        if (step + 1) % 5000 == 0 and checkpoint and checkpoint_prefix:
+        if (step + 1) % 1 == 0 and checkpoint and checkpoint_prefix:
             checkpoint.save(file_prefix=checkpoint_prefix)
         if  (step) % 1000 == 0 and step != 0:
             print(f"Time taken for 1000 steps: {time.time()-tick:.2f} sec\n")

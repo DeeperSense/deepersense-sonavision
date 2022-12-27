@@ -127,6 +127,7 @@ def PIX2PIX_DISCRIMINATOR_SONAR_CAMERA(
         inputs=[sonar_input, camera_input, reference_input], outputs=d5
     )
 
+
 def PIX2PIX_GENERATOR(
     input_shape=[256, 512, 3],
     output_shape=[256, 512, 3],
@@ -151,11 +152,11 @@ def PIX2PIX_GENERATOR(
     # sonar_input_conv = tf.keras.layers.Conv2D(
     #     filters=16, kernel_size=3, strides=1, padding="same"
     # )(sonar_input)
-    camera_input_conv = tf.keras.layers.Conv2D(
-        filters=16, kernel_size=3, strides=1, padding="same"
-    )(camera_input)
+    # camera_input_conv = tf.keras.layers.Conv2D(
+    #     filters=16, kernel_size=3, strides=1, padding="same"
+    # )(camera_input)
 
-    concat = camera_input_conv
+    concat = camera_input
 
     min_dim = min(input_shape[0], input_shape[1])
     temp_min_dim = min_dim
@@ -172,21 +173,23 @@ def PIX2PIX_GENERATOR(
     # create downsample stack of layers for Yx1 resolution
     downsample_stack = []
     for i in range(
-        1, count - 2
+        1, count + 1
     ):  # may be reduce this to keep trainable params in check
+        num_filters = base_filters * (2 ** i) if base_filters * (2 ** i) <= 512 else 512
         downsample_stack.append(
-            CBRDownsample(
-                filters=base_filters * (2 ** i), kernel_size=4, leakyReLU=True
-            )
+            CBRDownsample(filters=num_filters, kernel_size=4, leakyReLU=True)
         )
 
     # create upsample stack of layers for coming back to output resolution
     upsample_stack = []
     for i in range(
-        1, count - 2
+        1, count - 3
     ):  # may be reduce this to keep trainable params in check
+        upsample_stack.append(CBRUpsample(filters=512, kernel_size=4, leakyReLU=True))
+
+    for num_filters in [256, 128, 64]:
         upsample_stack.append(
-            CBRUpsample(filters=base_filters * (2 ** i), kernel_size=4, leakyReLU=True)
+            CBRUpsample(filters=num_filters, kernel_size=4, leakyReLU=True)
         )
 
     # create output layer
@@ -214,7 +217,7 @@ def PIX2PIX_GENERATOR(
 
     output = last(concat)
 
-    return tf.keras.Model(inputs= camera_input, outputs=output)
+    return tf.keras.Model(inputs=camera_input, outputs=output)
 
 
 def PIX2PIX_DISCRIMINATOR(
@@ -226,28 +229,43 @@ def PIX2PIX_DISCRIMINATOR(
     # sonar_input = tf.keras.layers.Input(input_shape)
     camera_input = tf.keras.layers.Input(input_shape)
     reference_input = tf.keras.layers.Input(input_shape)
+    
+    initializer = tf.random_normal_initializer(0.0, 0.02)
+
 
     # sonar_input_conv = tf.keras.layers.Conv2D(
     #     filters=256, kernel_size=3, strides=1, padding="same"
     # )(sonar_input)
-    camera_input_conv = tf.keras.layers.Conv2D(
-        filters=256, kernel_size=3, strides=1, padding="same"
-    )(camera_input)
+    # camera_input_conv = tf.keras.layers.Conv2D(
+    #     filters=256, kernel_size=3, strides=1, padding="same"
+    # )(camera_input)
 
-    # TODO: how to concatenate the inputs?
-    concat = tf.keras.layers.Concatenate()(
-        [camera_input_conv, reference_input]
-    )
+    # concat = tf.keras.layers.Concatenate()()
 
     # TODO: how to go down till 70x140 what is equivalent?
-    d1 = CBRDownsample(
-        filters=base_filters, kernel_size=4, apply_batchnorm=False, leakyReLU=True
-    )(concat)
-    d2 = CBRDownsample(filters=base_filters * 2, kernel_size=4, leakyReLU=True)(d1)
-    d3 = CBRDownsample(filters=base_filters * 4, kernel_size=4, leakyReLU=True)(d2)
-    d4 = CBRDownsample(filters=base_filters * 8, kernel_size=4, leakyReLU=True)(d3)
-    d5 = CBRDownsample(filters=1, kernel_size=4, leakyReLU=True)(d4)
+    x = tf.keras.layers.concatenate(
+        [camera_input, reference_input]
+    )  # (batch_size, 256, 256, channels*2)
 
-    return tf.keras.Model(
-        inputs=[camera_input, reference_input], outputs=d5
-    )
+    down1 = CBRDownsample(64, 2, 4, False)(x)  # (batch_size, 128, 128, 64)
+    down2 = CBRDownsample(128, 2, 4)(down1)  # (batch_size, 64, 64, 128)
+    down3 = CBRDownsample(256, 2, 4)(down2)  # (batch_size, 32, 32, 256)
+
+    zero_pad1 = tf.keras.layers.ZeroPadding2D()(down3)  # (batch_size, 34, 34, 256)
+    conv = tf.keras.layers.Conv2D(
+        512, 4, strides=1, kernel_initializer=initializer, use_bias=False
+    )(
+        zero_pad1
+    )  # (batch_size, 31, 31, 512)
+
+    batchnorm1 = tf.keras.layers.BatchNormalization()(conv)
+
+    leaky_relu = tf.keras.layers.LeakyReLU()(batchnorm1)
+
+    zero_pad2 = tf.keras.layers.ZeroPadding2D()(leaky_relu)  # (batch_size, 33, 33, 512)
+
+    last = tf.keras.layers.Conv2D(1, 4, strides=1, kernel_initializer=initializer)(
+        zero_pad2
+    )  # (batch_size, 30, 30, 1)
+
+    return tf.keras.Model(inputs=[camera_input, reference_input], outputs=last)

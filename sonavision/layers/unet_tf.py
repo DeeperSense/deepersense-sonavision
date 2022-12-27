@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 
-def CBRDownsample(filters=64, kernel_size=3, apply_batchnorm=True, leakyReLU=False):
+def CBRDownsample(filters=64, strides=2, kernel_size=3, apply_batchnorm=True, leakyReLU=False):
     """Defines a downsampling Conv->Batch->ReLU Block.
 
     It is used iteratively when building Generator/Discriminator.
@@ -24,7 +24,7 @@ def CBRDownsample(filters=64, kernel_size=3, apply_batchnorm=True, leakyReLU=Fal
         tf.keras.layers.Conv2D(
             filters,
             kernel_size,
-            strides=2,
+            strides=strides,
             padding="same",
             kernel_initializer=initializer,
             use_bias=False,

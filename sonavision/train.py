@@ -122,3 +122,5 @@ fit(
     checkpoint,
     checkpoint_prefix,
 )
+
+generator.save(opt.model_save_dir+"model")
