@@ -1,11 +1,12 @@
 import pathlib
 import os
+
 os.environ["TF_FORCE_GPU_ALLOW_GROWTH"] = "true"
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 
 import tensorflow as tf
 from options.pix2pix_tf import Pix2PixOptions
-from utils.pix2pix_tf import load_image
+from utils.pix2pix_tf import load_image, generate_images, visualize_image
 from models.pix2pix_tf import (
     PIX2PIX_GENERATOR,
     PIX2PIX_DISCRIMINATOR,
@@ -36,13 +37,16 @@ train_dataset = tf.data.Dataset.list_files(
 
 train_dataset = train_dataset.map(
     lambda x: load_image(
-        x, height=input_shape[0], width=input_shape[1], num_images_per_image=2
+        x,
+        height=input_shape[0],
+        width=input_shape[1],
+        num_images_per_image=opt.num_images_per_image,
+        normalize=True,
     )
 )
 
-train_dataset = train_dataset.shuffle(400)
+train_dataset = train_dataset.shuffle(1000)
 train_dataset = train_dataset.batch(opt.batch_size)
-
 
 test_dataset = tf.data.Dataset.list_files(
     str(
@@ -56,11 +60,16 @@ test_dataset = test_dataset.map(
         x,
         height=input_shape[0],
         width=input_shape[1],
-        num_images_per_image=2,
+        num_images_per_image=opt.num_images_per_image,
         normalize=True,
     )
 )
 test_dataset = test_dataset.batch(opt.batch_size)
+
+
+for sample in test_dataset.take(5):
+    visualize_image(sample, opt.num_images_per_image)
+
 
 # define define generator and discriminator optimizers
 generator_optimizer = tf.keras.optimizers.Adam(
@@ -72,11 +81,13 @@ discriminator_optimizer = tf.keras.optimizers.Adam(
 # define generator and discriminator models
 
 generator = PIX2PIX_GENERATOR(
+    arch_type=opt.arch_type,
     input_shape=input_shape,
     output_shape=output_shape,
     base_filters=opt.ngf,
 )
 discriminator = PIX2PIX_DISCRIMINATOR(
+    arch_type=opt.arch_type,
     input_shape=input_shape,
     output_shape=output_shape,
     base_filters=opt.ndf,
@@ -87,7 +98,7 @@ generator.summary()
 print("[INFO] Discriminator summary")
 discriminator.summary()
 # define checkpoint manager
-checkpoint_prefix = pathlib.Path(opt.checkpoint_dir) / "ckpt"
+checkpoint_prefix = pathlib.Path(opt.checkpoints_dir) / "ckpt"
 checkpoint = tf.train.Checkpoint(
     generator_optimizer=generator_optimizer,
     discriminator_optimizer=discriminator_optimizer,
@@ -109,7 +120,7 @@ from losses.pix2pix_tf import (
 
 fit(
     train_dataset,
-    40000,
+    100000,
     generator,
     discriminator,
     generatorWithSonarCameraLoss,
@@ -123,4 +134,7 @@ fit(
     checkpoint_prefix,
 )
 
-generator.save(opt.model_save_dir+"model")
+generator.save(opt.model_save_dir)
+
+for tar, inp in test_dataset.take(10):
+    generate_images(generator, inp, tar)

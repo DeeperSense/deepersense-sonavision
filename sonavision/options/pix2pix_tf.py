@@ -105,9 +105,7 @@ class Pix2PixOptions:
             "--results_dir", default="results", help="results save path"
         )
 
-        self.parser.add_argument(
-            "--logs_dir", default="log", help="logs dir"
-        )
+        self.parser.add_argument("--logs_dir", default="log", help="logs dir")
         self.parser.add_argument(
             "--checkpoints_dir",
             default="checkpoints",
@@ -125,6 +123,22 @@ class Pix2PixOptions:
             default="png",
             help="image format for input",
         )
+
+        self.parser.add_argument(
+            "--num_images_per_image",
+            default=3,
+            type=int,
+            help="number of images per sample",
+        )
+
+        self.parser.add_argument(
+            "--arch_type",
+            required=True,
+            default="with-camera-vanilla",
+            choices=["with-camera-early-fusion", "with-camera-late-fusion", "with-out-camera"],
+            help="architecture type",
+        )
+
         self.initialized = True
 
     def parse_inline(self, args):

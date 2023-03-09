@@ -1,6 +1,6 @@
 import time
 import tensorflow as tf
-
+from utils.pix2pix_tf import visualize_image
 
 @tf.function
 def train_step(
@@ -64,19 +64,22 @@ def train_step(
 
 def fit(train_dataset, steps, generator,discriminator,generator_loss_fn,discriminator_loss_fn,generator_optimizer,discriminator_optimizer,lambda_l1, loss_object,summary_writer, checkpoint, checkpoint_prefix):
 
-    for step, (input, target) in train_dataset.repeat().take(steps).enumerate():
+    for step, sample in train_dataset.repeat().take(steps).enumerate():
         tick = time.time()
         if step % 1000 == 0:
             tick = time.time()
             print(f"Step: {step//1000}k")
-        train_step(input, target, step, generator,discriminator,generator_loss_fn,discriminator_loss_fn,generator_optimizer,discriminator_optimizer, lambda_l1, loss_object,summary_writer,)
+        train_step(sample[:-1], sample[0], step, generator,discriminator,generator_loss_fn,discriminator_loss_fn,generator_optimizer,discriminator_optimizer, lambda_l1, loss_object,summary_writer,)
         # training step
-        if (step + 1) % 1 == 0:
+
+        # TODO: REMOVE--visualize image here
+        visualize_image(sample,3)
+        if (step + 1) % 10 == 0:
             print(".", end="", flush=True)
 
         # Save (checkpoint) the model every 5k steps
-        if (step + 1) % 1 == 0 and checkpoint and checkpoint_prefix:
-            checkpoint.save(file_prefix=checkpoint_prefix)
+        # if (step + 1) % 1 == 0 and checkpoint and checkpoint_prefix:
+        #     checkpoint.save(file_prefix=checkpoint_prefix)
         if  (step) % 1000 == 0 and step != 0:
             print(f"Time taken for 1000 steps: {time.time()-tick:.2f} sec\n")
         

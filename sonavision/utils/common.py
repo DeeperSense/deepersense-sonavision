@@ -27,7 +27,7 @@ def random_crop(images: list, height: int, width: int) -> list:
     # stacked_image = tf.stack(images, axis=0)
     cropped_images = []
     for i in images:
-        cropped_images.append(tf.image.random_crop(i, size=[3, height, width, 3]))
+        cropped_images.append(tf.image.random_crop(i, size=[2, height, width, 3]))
 
     return cropped_images
 
