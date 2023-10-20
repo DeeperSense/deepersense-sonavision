@@ -1,8 +1,15 @@
 import tensorflow as tf
 from utils.common import images_resize, random_crop, normalize_inputs
 from matplotlib import pyplot as plt
+import pdb
+from typing import List
 
-def decode_images(image_file, num_images: int, image_format: str = "png"):
+
+def decode_images(
+    image_file,
+    num_images: int,
+    image_format: str = "png",
+):
     # Read and decode an image file to a uint8 tensor
     image = tf.io.read_file(image_file)
 
@@ -16,6 +23,7 @@ def decode_images(image_file, num_images: int, image_format: str = "png"):
     w = tf.shape(image)[1]
     w = w // num_images
 
+    # since camera and sonar images are of different width, generalised function will not work.
     images = []
 
     for i in range(num_images):
@@ -48,8 +56,9 @@ def load_image(
     normalize: bool = False,
     height: int = 256,
     width: int = 512,
+    image_format: str = "png",
 ):
-    img = decode_images(image_file, num_images_per_image)
+    img = decode_images(image_file, num_images_per_image, image_format)
     if random_jitter:
         img = random_jitter(img, height, width)
     if normalize:
@@ -85,11 +94,11 @@ def load_image(
 #     pass
 
 
-def generate_images(model, test_input, tar, save_path):
-    prediction = model(test_input, training=True)
+def generate_images(model, test_input_camera, test_input_sonar, target, save_path):
+    prediction = model([test_input_camera, test_input_sonar], training=False)
     plt.figure(figsize=(15, 15))
 
-    display_list = [test_input[0], tar[0], prediction[0]]
+    display_list = [test_input_camera[0], target[0], prediction[0]]
     title = ["Input Image", "Ground Truth", "Predicted Image"]
 
     for i in range(3):
@@ -106,7 +115,7 @@ def visualize_image(data: list, num_of_images):
     plt.figure(figsize=(15, 15))
     for idx in range(num_of_images):
         plt.subplot(1, num_of_images, idx + 1)
-        plt.title("Image "+str(idx))
+        plt.title("Image " + str(idx))
         # Getting the pixel values in the [0, 1] range to plot.
         plt.imshow(data[idx][0] * 0.5 + 0.5)
         plt.axis("off")

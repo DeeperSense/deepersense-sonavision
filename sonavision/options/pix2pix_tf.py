@@ -29,6 +29,12 @@ class Pix2PixOptions:
             help="train subfolder in dataset",
         )
         self.parser.add_argument(
+            "--val_subdir",
+            required=False,
+            default="val",
+            help="validation subfolder in dataset",
+        )
+        self.parser.add_argument(
             "--test_subdir",
             required=False,
             default="test",
@@ -38,7 +44,7 @@ class Pix2PixOptions:
             "--batch_size", type=int, default=8, help="train batch size"
         )
         self.parser.add_argument(
-            "--test_batch_size", type=int, default=5, help="test batch size"
+            "--test_batch_size", type=int, default=1, help="test batch size"
         )
         # self.parser.add_argument('--ngf', type=int, default=64)
         # self.parser.add_argument('--ndf', type=int, default=64)
