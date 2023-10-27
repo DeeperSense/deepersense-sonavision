@@ -83,5 +83,7 @@ optional arguments:
                         number of images per sample
   --arch_type {with-camera-early-fusion,with-camera-late-fusion,with-out-camera}
                         architecture type
+  --restore_checkpoint_dir
+                        Path to checkpoint to restore from
 
 ```
