@@ -145,6 +145,13 @@ class Pix2PixOptions:
             help="architecture type",
         )
 
+        self.parser.add_argument(
+            "--restore_checkpoint_dir",
+            required=False,
+            default=None,
+            help="Path to checkpoint to restore from",
+        )
+
         self.initialized = True
 
     def parse_inline(self, args):

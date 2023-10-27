@@ -116,6 +116,13 @@ checkpoint = tf.train.Checkpoint(
     discriminator=discriminator,
 )
 
+# if opt.resume is true, restore from checkpoint
+if opt.restore_checkpoint_dir:
+    checkpoint.restore(tf.train.latest_checkpoint(opt.restore_checkpoint_dir))
+    print("[INFO] Restoring from checkpoint at {}".format(tf.train.latest_checkpoint(opt.restore_checkpoint_dir)))
+else:
+    print("[INFO] Initializing from scratch")
+
 loss_object = tf.keras.losses.BinaryCrossentropy(from_logits=True)
 
 summary_writer = tf.summary.create_file_writer(
